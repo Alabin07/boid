@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="sv">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Boids Simulation</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.6.0/p5.min.js"></script>
+  </head>
+  <header>
+    <a href="#" class="logo">WebDev<span style="color: var(--primary);">Fundamentals</span></a>
+    <div class="menu-toggle">☰</div>
+    <nav>
+        <ul id="navLinks">
+            <li><a href="index.html"  data-page="home">Home</a></li>
+            <li><a href="html.html" data-page="html">HTML</a></li>
+            <li><a href="css.html" data-page="css">CSS</a></li>
+            <li><a href="js.html" data-page="javascript">JavaScript</a></li>
+            <li><a href="examples.html" class="active">Examples</a></li>
+            <li><button id="theme-toggle">Toggle Theme</button></li>
+        </ul>
+    </nav>
+</header>
+  <body>
+    <script>
+      // Globala arrayer
+      let boids = [];
+      let eagles = [];
+      
+      // Parametrar för simuleringen (används i beteendemetoderna)
+      let boidFearStrength = 0.67;
+      let boidAlignSpeed = 0.015;
+      let boidCohesionStrength = 0.015;
+      let boidAvoidanceStrength = 0.25;
+      let eagleHuntStrength = 0.1;
+      let eagleAvoidStrength = 0.2;
+      
+      // UI-element
+      let fearSlider, alignSlider, cohesionSlider, avoidanceSlider;
+      let huntSlider, eagleAvoidSlider;
+      let numBoidsSlider, numEaglesSlider;
+      let startStopButton, restartButton;
+      let controlPanel;
+      
+      // Layoutvariabler
+      let canvasWidth, canvasHeight, panelWidth;
+      
+      // Simuleringsstatus
+      let running = true;
+      
+      function setup() {
+        // Bestäm layout: 70% canvas, 30% kontrollpanel
+        canvasWidth = windowWidth * 0.7;
+        panelWidth = windowWidth * 0.3;
+        canvasHeight = windowHeight;
+        
+        let canvas = createCanvas(canvasWidth, canvasHeight);
+        canvas.position(0, 0);
+        
+        // Skapa kontrollpanelen som ett div-element
+        controlPanel = createDiv();
+        controlPanel.position(canvasWidth, 0);
+        controlPanel.size(panelWidth, canvasHeight);
+        controlPanel.style('padding', '10px');
+        controlPanel.style('background-color', '#f0f0f0');
+        
+        // Skapa start/stop-knapp
+        startStopButton = createButton("Stoppa simuleringen");
+        startStopButton.parent(controlPanel);
+        startStopButton.mousePressed(toggleSimulation);
+        
+        // Skapa restart-knapp
+        restartButton = createButton("Starta om simuleringen");
+        restartButton.parent(controlPanel);
+        restartButton.mousePressed(restartSimulation);
+        
+        // Slider för antal Boids (10–300)
+        createP("Antal Boids (1–300)").parent(controlPanel);
+        numBoidsSlider = createSlider(1, 300, 150, 1);
+        numBoidsSlider.parent(controlPanel);
+        
+        // Slider för antal Eagles (1–10)
+        createP("Antal Eagles (0–10)").parent(controlPanel);
+        numEaglesSlider = createSlider(0, 10, 2, 1);
+        numEaglesSlider.parent(controlPanel);
+        
+        // Övriga parametrar
+        createP("Boid Fear Strength").parent(controlPanel);
+        fearSlider = createSlider(0, 2, boidFearStrength, 0.01);
+        fearSlider.parent(controlPanel);
+        
+        createP("Boid Alignment Speed").parent(controlPanel);
+        alignSlider = createSlider(0, 0.1, boidAlignSpeed, 0.001);
+        alignSlider.parent(controlPanel);
+        
+        createP("Boid Cohesion Strength").parent(controlPanel);
+        cohesionSlider = createSlider(0, 0.1, boidCohesionStrength, 0.001);
+        cohesionSlider.parent(controlPanel);
+        
+        createP("Boid Avoidance Strength").parent(controlPanel);
+        avoidanceSlider = createSlider(0, 1, boidAvoidanceStrength, 0.01);
+        avoidanceSlider.parent(controlPanel);
+        
+        createP("Eagle Hunt Strength").parent(controlPanel);
+        huntSlider = createSlider(0, 0.5, eagleHuntStrength, 0.01);
+        huntSlider.parent(controlPanel);
+        
+        createP("Eagle Avoid Strength").parent(controlPanel);
+        eagleAvoidSlider = createSlider(0, 0.5, eagleAvoidStrength, 0.01);
+        eagleAvoidSlider.parent(controlPanel);
+        
+        // Initiera simuleringen
+        initializeSimulation();
+      }
+      
+      // Skapar om boids och eagles enligt de valda antalen
+      function initializeSimulation() {
+        boids = [];
+        eagles = [];
+        let numBoids = numBoidsSlider.value();
+        let numEagles = numEaglesSlider.value();
+        
+        for (let i = 0; i < numBoids; i++) {
+          boids.push(new Boid(random(width), random(height)));
+        }
+        for (let i = 0; i < numEagles; i++) {
+          eagles.push(new Eagle(random(width), random(height)));
+        }
+      }
+      
+      // Återstarta simuleringen (med nya antal objekt)
+      function restartSimulation() {
+        initializeSimulation();
+      }
+      
+      // Starta/stoppa simuleringen
+      function toggleSimulation() {
+        running = !running;
+        if (running) {
+          loop();
+          startStopButton.html("Stoppa simuleringen");
+        } else {
+          noLoop();
+          startStopButton.html("Starta simuleringen");
+        }
+      }
+      
+      function draw() {
+        background(255);
+        
+        // Uppdatera parametrar från sliders
+        boidFearStrength = fearSlider.value();
+        boidAlignSpeed = alignSlider.value();
+        boidCohesionStrength = cohesionSlider.value();
+        boidAvoidanceStrength = avoidanceSlider.value();
+        eagleHuntStrength = huntSlider.value();
+        eagleAvoidStrength = eagleAvoidSlider.value();
+        
+        // Uppdatera och rita alla boids och eagles
+        for (let b of boids) {
+          b.update(boids, eagles);
+        }
+        for (let e of eagles) {
+          e.update(boids, eagles);
+        }
+        for (let b of boids) {
+          b.draw();
+        }
+        for (let e of eagles) {
+          e.draw();
+        }
+      }
+      
+      // Klass för Boid
+      class Boid {
+        constructor(x, y) {
+          this.x = x;
+          this.y = y;
+          this.vx = random(-1, 1);
+          this.vy = random(-1, 1);
+          this.MAX_SPEED = 2;
+          this.ALIGN_RADIUS = 70;
+          this.AVOIDANCE_RADIUS = 12;
+          this.FEAR_RADIUS = 45;
+        }
+        
+        Fear(eagles) {
+          let count = 0;
+          let coX = 0, coY = 0;
+          for (let e of eagles) {
+            let d = dist(this.x, this.y, e.x, e.y);
+            if (d < this.FEAR_RADIUS) {
+              coX += e.x;
+              coY += e.y;
+              count++;
+            }
+          }
+          if (count > 0) {
+            coX /= count;
+            coY /= count;
+            if (coX < this.x) {
+              this.vx += boidFearStrength;
+            } else if (coX > this.x) {
+              this.vx -= boidFearStrength;
+            }
+            if (coY < this.y) {
+              this.vy += boidFearStrength;
+            } else if (coY > this.y) {
+              this.vy -= boidFearStrength;
+            }
+          }
+        }
+        
+        Alignment(boids) {
+          let count = 0;
+          let alignX = 0, alignY = 0;
+          for (let other of boids) {
+            let d = dist(this.x, this.y, other.x, other.y);
+            if (other !== this && d < this.ALIGN_RADIUS) {
+              alignX += other.vx;
+              alignY += other.vy;
+              count++;
+            }
+          }
+          if (count > 0) {
+            this.vx += (alignX / count) * boidAlignSpeed;
+            this.vy += (alignY / count) * boidAlignSpeed;
+          }
+        }
+        
+        Separation(boids) {
+          let count = 0;
+          let coX = 0, coY = 0;
+          for (let other of boids) {
+            let d = dist(this.x, this.y, other.x, other.y);
+            if (other !== this && d < this.AVOIDANCE_RADIUS) {
+              coX += other.x;
+              coY += other.y;
+              count++;
+            }
+          }
+          if (count > 0) {
+            coX /= count;
+            coY /= count;
+            if (coX < this.x) {
+              this.vx += boidAvoidanceStrength;
+            } else if (coX > this.x) {
+              this.vx -= boidAvoidanceStrength;
+            }
+            if (coY < this.y) {
+              this.vy += boidAvoidanceStrength;
+            } else if (coY > this.y) {
+              this.vy -= boidAvoidanceStrength;
+            }
+          }
+        }
+        
+        Cohesion(boids) {
+          let count = 0;
+          let coX = 0, coY = 0;
+          for (let other of boids) {
+            let d = dist(this.x, this.y, other.x, other.y);
+            if (other !== this && d < this.ALIGN_RADIUS && d > this.AVOIDANCE_RADIUS) {
+              coX += other.x;
+              coY += other.y;
+              count++;
+            }
+          }
+          if (count > 0) {
+            coX /= count;
+            coY /= count;
+            if (coX < this.x) {
+              this.vx -= boidCohesionStrength;
+            } else if (coX > this.x) {
+              this.vx += boidCohesionStrength;
+            }
+            if (coY < this.y) {
+              this.vy -= boidCohesionStrength;
+            } else if (coY > this.y) {
+              this.vy += boidCohesionStrength;
+            }
+          }
+        }
+        
+        update(boids, eagles) {
+          this.Alignment(boids);
+          this.Cohesion(boids);
+          this.Separation(boids);
+          this.Fear(eagles);
+          
+          this.x += this.vx;
+          this.y += this.vy;
+          this.limitSpeed();
+          
+          if (this.x < 0) this.x = width;
+          if (this.x > width) this.x = 0;
+          if (this.y < 0) this.y = height;
+          if (this.y > height) this.y = 0;
+        }
+        
+        limitSpeed() {
+          let speed = sqrt(this.vx * this.vx + this.vy * this.vy);
+          if (speed > this.MAX_SPEED) {
+            this.vx = (this.vx / speed) * this.MAX_SPEED;
+            this.vy = (this.vy / speed) * this.MAX_SPEED;
+          }
+        }
+        
+        draw() {
+          fill(0, 0, 255);
+          noStroke();
+          ellipse(this.x, this.y, 10, 10);
+        }
+      }
+      
+      // Klass för Eagle
+      class Eagle {
+        constructor(x, y) {
+          this.x = x;
+          this.y = y;
+          this.vx = random(-1, 1);
+          this.vy = random(-1, 1);
+          this.HUNT_RADIUS = 200;
+          this.AVOID_RADIUS = 170;
+          this.MAX_SPEED = 4;
+        }
+        
+        Hunt(boids) {
+          let count = 0;
+          let coX = 0, coY = 0;
+          for (let b of boids) {
+            let d = dist(this.x, this.y, b.x, b.y);
+            if (d < this.HUNT_RADIUS) {
+              coX += b.x;
+              coY += b.y;
+              count++;
+            }
+          }
+          if (count > 0) {
+            coX /= count;
+            coY /= count;
+            if (coX < this.x) {
+              this.vx -= eagleHuntStrength;
+            } else if (coX > this.x) {
+              this.vx += eagleHuntStrength;
+            }
+            if (coY < this.y) {
+              this.vy -= eagleHuntStrength;
+            } else if (coY > this.y) {
+              this.vy += eagleHuntStrength;
+            }
+          }
+        }
+        
+        Avoid(eagles) {
+          let count = 0;
+          let coX = 0, coY = 0;
+          for (let other of eagles) {
+            let d = dist(this.x, this.y, other.x, other.y);
+            if (d < this.AVOID_RADIUS) {
+              coX += other.x;
+              coY += other.y;
+              count++;
+            }
+          }
+          if (count > 0) {
+            coX /= count;
+            coY /= count;
+            if (coX < this.x) {
+              this.vx += eagleAvoidStrength;
+            } else if (coX > this.x) {
+              this.vx -= eagleAvoidStrength;
+            }
+            if (coY < this.y) {
+              this.vy += eagleAvoidStrength;
+            } else if (coY > this.y) {
+              this.vy -= eagleAvoidStrength;
+            }
+          }
+        }
+        
+        update(boids, eagles) {
+          this.Hunt(boids);
+          this.Avoid(eagles);
+          this.limitSpeed();
+          
+          this.x += this.vx;
+          this.y += this.vy;
+          
+          if (this.x < 0) this.x = width;
+          if (this.x > width) this.x = 0;
+          if (this.y < 0) this.y = height;
+          if (this.y > height) this.y = 0;
+        }
+        
+        limitSpeed() {
+          let speed = sqrt(this.vx * this.vx + this.vy * this.vy);
+          if (speed > this.MAX_SPEED) {
+            this.vx = (this.vx / speed) * this.MAX_SPEED;
+            this.vy = (this.vy / speed) * this.MAX_SPEED;
+          }
+        }
+        
+        draw() {
+          fill(255, 0, 0);
+          noStroke();
+          ellipse(this.x, this.y, 20, 20);
+        }
+      }
+    </script>
+  </body>
+</html>
