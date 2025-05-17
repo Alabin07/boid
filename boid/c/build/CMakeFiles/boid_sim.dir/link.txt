@@ -1,0 +1,1 @@
+/usr/bin/gcc -Wl,--dependency-file=CMakeFiles/boid_sim.dir/link.d CMakeFiles/boid_sim.dir/main.c.o -o boid_sim  -Wl,-rpath,/usr/local/lib64 /usr/local/lib64/libSDL3.so.0.3.0 -lm

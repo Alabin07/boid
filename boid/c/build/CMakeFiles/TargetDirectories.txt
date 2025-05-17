@@ -1,0 +1,3 @@
+/home/alabin/Development/boid/boid/c/build/CMakeFiles/boid_sim.dir
+/home/alabin/Development/boid/boid/c/build/CMakeFiles/edit_cache.dir
+/home/alabin/Development/boid/boid/c/build/CMakeFiles/rebuild_cache.dir
